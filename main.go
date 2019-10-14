@@ -12,7 +12,7 @@ func main() {
 	fmt.Println("Starting application...")
 	go manager.start()
 	http.HandleFunc("/ws", wsPage)
-	http.ListenAndServe(":12345", nil)
+	http.ListenAndServe(":4000", nil)
 }
 
 // By adding a CheckOrigin we can accept requests from outside domains eliminating cross origin resource sharing (CORS) errors.
