@@ -15,6 +15,7 @@ func main() {
 	http.ListenAndServe(":12345", nil)
 }
 
+// By adding a CheckOrigin we can accept requests from outside domains eliminating cross origin resource sharing (CORS) errors.
 func wsPage(res http.ResponseWriter, req *http.Request) {
 	conn, error := (&websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}).Upgrade(res, req, nil)
 	if error != nil {

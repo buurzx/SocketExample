@@ -6,6 +6,11 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// ClientManager will keep track of all the
+// connected clients, clients that are trying
+// to become registered, clients that have become
+// destroyed and are waiting to be removed,
+// and messages that are to be broadcasted to and from all connected clients.
 type ClientManager struct {
 	clients    map[*Client]bool
 	broadcast  chan []byte
@@ -13,6 +18,7 @@ type ClientManager struct {
 	unregister chan *Client
 }
 
+// Client has a unique id, a socket connection, and a message waiting to be sent.
 type Client struct {
 	id     string
 	socket *websocket.Conn
@@ -32,6 +38,26 @@ var manager = ClientManager{
 	clients:    make(map[*Client]bool),
 }
 
+// Every time the manager.register channel has data,
+// the client will be added to the map of available clients
+// managed by the client manager. After adding the client,
+// a JSON message is sent to all other clients,
+// not including the one that just connected.
+
+// If a client disconnects for any reason,
+// the manager.unregister channel will have data.
+// The channel data in the disconnected client will
+// be closed and the client will be removed from the
+// client manager. A message announcing the
+// disappearance of a socket will be sent to all remaining connections.
+
+// If the manager.broadcast channel has data
+// it means that we’re trying to send and receive
+// messages. We want to loop through each managed
+// client sending the message to each of them. If
+// for some reason the channel is clogged or the
+// message can’t be sent, we assume the client
+// has disconnected and we remove them instead.
 func (manager *ClientManager) start() {
 	for {
 		select {
@@ -67,6 +93,8 @@ func (manager *ClientManager) send(message []byte, ignore *Client) {
 	}
 }
 
+// The point of this goroutine is to read the socket data and
+// add it to the manager.broadcast for further orchestration
 func (c *Client) read() {
 	defer func() {
 		manager.unregister <- c
@@ -75,6 +103,9 @@ func (c *Client) read() {
 
 	for {
 		_, message, err := c.socket.ReadMessage()
+		// If there was an error reading the websocket data
+		// it probably means the client has disconnected.
+		// If that is the case we need to unregister the client from our server.
 		if err != nil {
 			manager.unregister <- c
 			c.socket.Close()
